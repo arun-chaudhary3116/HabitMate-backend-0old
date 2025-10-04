@@ -35,7 +35,7 @@ app.use(cookieParser());
 // SESSION + PASSPORT
 app.use(
   session({
-    SESSION_SECRET: process.env.SESSION_SECRET || "chaudhary123",
+    secret: process.env.SESSION_SECRET || "chaudhary123",
     resave: false,
     saveUninitialized: false,
     cookie: {
