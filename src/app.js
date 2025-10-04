@@ -50,8 +50,8 @@ app.use(
   })
 );
 
-// Handle preflight requests
-app.options("*", cors());
+// Handle preflight requests - FIXED: Use regex instead of string wildcard
+app.options(/.*/, cors());
 
 // -------------------------
 // 📦 Middlewares
@@ -99,6 +99,29 @@ const __dirname = path.dirname(__filename);
 
 // Serve files via /public route
 app.use("/public", express.static(path.join(process.cwd(), "../public")));
+
+// -------------------------
+// ✅ Health Check Route
+// -------------------------
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is running healthy",
+    timestamp: new Date().toISOString()
+  });
+});
+
+// -------------------------
+// 🚨 Error Handling Middleware
+// -------------------------
+app.use((err, req, res, next) => {
+  console.error("Error:", err);
+  res.status(500).json({
+    success: false,
+    message: "Internal Server Error",
+    error: isProd ? {} : err.message
+  });
+});
 
 // -------------------------
 // ✅ Export app for index.js
