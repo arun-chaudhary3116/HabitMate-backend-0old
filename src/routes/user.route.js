@@ -19,6 +19,7 @@ import { Habit } from "../models/habit.model.js";
 import { User } from "../models/user.model.js";
 
 const router = Router();
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 // -------------------- GOOGLE AUTH --------------------
 router.get(
@@ -29,7 +30,7 @@ router.get(
 router.get(
   "/google/callback",
   passport.authenticate("google", {
-    failureRedirect: "http://localhost:8080/",
+    failureRedirect: `${FRONTEND_URL}/`,
     session: true,
   }),
   async (req, res) => {
@@ -41,18 +42,18 @@ router.get(
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+         sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       });
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+         sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       });
 
-      res.redirect("http://localhost:8080/dashboard");
+      res.redirect(`${FRONTEND_URL}/dashboard`);
     } catch (error) {
       console.error("Google callback error:", error);
-      res.redirect("http://localhost:8080/?error=oauth_failed");
+      res.redirect(`${FRONTEND_URL}/?error=oauth_failed`);
     }
   }
 );
@@ -66,7 +67,7 @@ router.get(
 router.get(
   "/github/callback",
   passport.authenticate("github", {
-    failureRedirect: "http://localhost:8080/",
+    failureRedirect: `${FRONTEND_URL}/`,
     session: true,
   }),
   async (req, res) => {
@@ -86,10 +87,10 @@ router.get(
         sameSite: "lax",
       });
 
-      res.redirect("http://localhost:8080/dashboard");
+      res.redirect(`${FRONTEND_URL}/dashboard`);
     } catch (error) {
       console.error("GitHub callback error:", error);
-      res.redirect("http://localhost:8080/?error=oauth_failed");
+      res.redirect(`${FRONTEND_URL}/?error=oauth_failed`);
     }
   }
 );
