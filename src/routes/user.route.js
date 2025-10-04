@@ -19,9 +19,23 @@ import { Habit } from "../models/habit.model.js";
 import { User } from "../models/user.model.js";
 
 const router = Router();
+const isProd = process.env.NODE_ENV === "production";
+
+// ✅ Validate FRONTEND_URL once
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
-// -------------------- GOOGLE AUTH --------------------
+if (!FRONTEND_URL || !/^https?:\/\//.test(FRONTEND_URL)) {
+  console.error("❌ Invalid FRONTEND_URL in environment:", FRONTEND_URL);
+  throw new Error(
+    "FRONTEND_URL is not set correctly in the environment variables."
+  );
+}
+
+console.log("✅ Using FRONTEND_URL:", FRONTEND_URL);
+
+/* =======================
+   🌐 GOOGLE AUTH
+======================= */
 router.get(
   "/auth/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
@@ -41,13 +55,13 @@ router.get(
 
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-         sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
       });
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-         sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
       });
 
       res.redirect(`${FRONTEND_URL}/dashboard`);
@@ -58,7 +72,9 @@ router.get(
   }
 );
 
-// -------------------- GITHUB AUTH --------------------
+/* =======================
+   🐙 GITHUB AUTH
+======================= */
 router.get(
   "/auth/github",
   passport.authenticate("github", { scope: ["user:email"] })
@@ -78,13 +94,13 @@ router.get(
 
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
       });
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
       });
 
       res.redirect(`${FRONTEND_URL}/dashboard`);
@@ -95,18 +111,23 @@ router.get(
   }
 );
 
-// -------------------- LOCAL AUTH --------------------
+/* =======================
+   👤 LOCAL AUTH
+======================= */
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 
-// -------------------- CURRENT USER --------------------
+/* =======================
+   👤 CURRENT USER
+======================= */
 router.get("/me", verifyJWT, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("-password");
-    if (!user)
+    if (!user) {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
+    }
 
     res.json({
       success: true,
@@ -114,7 +135,7 @@ router.get("/me", verifyJWT, async (req, res) => {
         _id: user._id,
         username: user.username,
         email: user.email,
-        profilePicture: user.profilePicture || "", // ✅ always return avatar
+        profilePicture: user.profilePicture || "",
         authProvider: user.authProvider || "local",
         bio: user.bio || "",
         createdAt: user.createdAt,
@@ -127,7 +148,9 @@ router.get("/me", verifyJWT, async (req, res) => {
   }
 });
 
-// -------------------- PROFILE --------------------
+/* =======================
+   ✏️ PROFILE
+======================= */
 router.get("/profile", verifyJWT, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("-password");
@@ -157,16 +180,22 @@ router.get("/profile", verifyJWT, async (req, res) => {
 
 router.put("/profile", verifyJWT, updateProfile);
 
-// -------------------- AVATAR UPLOAD (only Cloudinary) --------------------
+/* =======================
+   📸 AVATAR UPLOAD
+======================= */
 router.put("/avatar", verifyJWT, upload.single("avatar"), updateAvatar);
 
-// -------------------- TOKENS & PASSWORD --------------------
+/* =======================
+   🔑 TOKENS & PASSWORD
+======================= */
 router.post("/refresh-token", refreshAccessToken);
 router.post("/logout", verifyJWT, logoutUser);
 router.post("/change-password", verifyJWT, changeCurrentPassword);
 router.get("/current-user", verifyJWT, getCurrentUser);
 
-//email route
+/* =======================
+   📧 EMAIL VERIFICATION
+======================= */
 router.post("/send-verification-email", verifyJWT, sendVerificationEmail);
 router.get("/verify-email", verifyEmail);
 
