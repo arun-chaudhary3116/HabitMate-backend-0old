@@ -35,13 +35,14 @@ app.use(cookieParser());
 // SESSION + PASSPORT
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "supersecret",
+    SESSION_SECRET: process.env.SESSION_SECRET || "chaudhary123",
     resave: false,
     saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === "production", // true only in HTTPS
       httpOnly: true,
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 1000 * 60 * 60 * 24 * 7,
     },
   })
 );
