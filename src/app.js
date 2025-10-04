@@ -1,48 +1,80 @@
 import express from "express";
-import cookieParser from "cookie-parser";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import session from "express-session";
 import passport from "passport";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import "./db/passport.js"; // Google OAuth config
+// 🧭 Import passport strategies (must be before using passport)
+import "./db/passport.js";
 
-import userRouter from "./routes/user.route.js";
+// 🧭 Import routers
+import chatRouter from "./routes/chat.route.js";
 import habitRouter from "./routes/habit.route.js";
 import journalRouter from "./routes/journal.route.js";
-import chatRouter from "./routes/chat.route.js";
 import newsletterRouter from "./routes/newsletter.routes.js";
+import userRouter from "./routes/user.route.js";
 
+// -------------------------
+// 🚀 App Initialization
+// -------------------------
 const app = express();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const isProd = process.env.NODE_ENV === "production";
 
-const FRONTEND_URL = process.env.FRONTEND_URL || process.env.CORS_ORIGIN;
+// -------------------------
+// 🌐 CORS Configuration
+// -------------------------
+const allowedOrigins = [process.env.FRONTEND_URL || process.env.CORS_ORIGIN];
 
-// -------------------- MIDDLEWARES --------------------
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+    ],
   })
 );
 
+// Handle preflight requests
+app.options("*", cors());
+
+// -------------------------
+// 📦 Middlewares
+// -------------------------
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(cookieParser());
 
-// SESSION + PASSPORT
+// Serve static files (e.g. uploaded images)
+app.use(express.static("public"));
+
+// -------------------------
+// 🧠 Sessions & Passport
+// -------------------------
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "chaudhary123",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production", // true only in HTTPS
       httpOnly: true,
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 7,
+      secure: isProd,          // true in production with HTTPS
+      sameSite: isProd ? "none" : "lax",
     },
   })
 );
@@ -50,14 +82,25 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// -------------------- STATIC --------------------
-app.use("/public", express.static(path.join(__dirname, "../public")));
-
-// -------------------- ROUTES --------------------
+// -------------------------
+// 🛣 Routes
+// -------------------------
 app.use("/api/v2/users", userRouter);
 app.use("/api/v2/habits", habitRouter);
 app.use("/api/v2/journal", journalRouter);
 app.use("/api/v2/chat", chatRouter);
 app.use("/api/v2/newsletter", newsletterRouter);
 
+// -------------------------
+// 🧭 Static Public Folder
+// -------------------------
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve files via /public route
+app.use("/public", express.static(path.join(process.cwd(), "../public")));
+
+// -------------------------
+// ✅ Export app for index.js
+// -------------------------
 export { app };
