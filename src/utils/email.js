@@ -7,7 +7,7 @@ const resend = new Resend(env.RESEND_API_KEY);
 export const sendEmail = async ({ to, subject, html, text }) => {
   try {
     const info = await resend.emails.send({
-      from: "HabitMate <onboarding@resend.dev>",
+      from: "HabitMate <arunc3116@gmail.com>",
 
       to,
       subject,
