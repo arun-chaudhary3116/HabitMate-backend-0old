@@ -29,7 +29,6 @@ const allowedOrigins = [
   process.env.FRONTEND_URL, 
   process.env.CORS_ORIGIN,
   "https://habitmate-tws5.onrender.com",
-  "http://localhost:3000"
 ].filter(Boolean);
 
 console.log("✅ Allowed CORS origins:", allowedOrigins);
