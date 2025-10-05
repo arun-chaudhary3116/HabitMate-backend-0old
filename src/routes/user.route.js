@@ -86,7 +86,7 @@ router.get(
       });
 
       console.log("🍪 Cookies set, redirecting to dashboard");
-      res.redirect(`${FRONTEND_URL}/dashboard`);
+      res.redirect(`${FRONTEND_URL}/`);
     } catch (error) {
       console.error("❌ Google callback error:", error);
       res.redirect(`${FRONTEND_URL}/login?error=oauth_failed&message=${encodeURIComponent(error.message)}`);
