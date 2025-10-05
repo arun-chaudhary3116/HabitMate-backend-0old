@@ -23,6 +23,7 @@ const isProd = process.env.NODE_ENV === "production";
 
 // ✅ Validate FRONTEND_URL once
 const FRONTEND_URL = process.env.FRONTEND_URL;
+const BACKEND_URL = process.env.BACKEND_URL || "https://habitmate-backend.onrender.com";
 
 if (!FRONTEND_URL || !/^https?:\/\//.test(FRONTEND_URL)) {
   console.error("❌ Invalid FRONTEND_URL in environment:", FRONTEND_URL);
@@ -32,62 +33,95 @@ if (!FRONTEND_URL || !/^https?:\/\//.test(FRONTEND_URL)) {
 }
 
 console.log("✅ Using FRONTEND_URL:", FRONTEND_URL);
+console.log("✅ Using BACKEND_URL:", BACKEND_URL);
 
 /* =======================
-   🌐 GOOGLE AUTH
+   🌐 GOOGLE AUTH - FIXED Callback URLs
 ======================= */
 router.get(
   "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  (req, res, next) => {
+    console.log("🔐 Google OAuth initiated");
+    next();
+  },
+  passport.authenticate("google", { 
+    scope: ["profile", "email"],
+    accessType: 'offline',
+    prompt: 'consent'
+  })
 );
 
 router.get(
   "/google/callback",
+  (req, res, next) => {
+    console.log("🔄 Google OAuth callback received");
+    console.log("📋 Query params:", req.query);
+    next();
+  },
   passport.authenticate("google", {
-    failureRedirect: `${FRONTEND_URL}/`,
+    failureRedirect: `${FRONTEND_URL}/login?error=oauth_failed`,
     session: true,
   }),
   async (req, res) => {
     try {
+      console.log("✅ Google OAuth successful for user:", req.user?.email);
+      
       const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
         req.user._id
       );
 
+      // Set cookies
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
         secure: isProd,
         sameSite: isProd ? "none" : "lax",
+        maxAge: 15 * 60 * 1000 // 15 minutes
       });
+      
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: isProd,
         sameSite: isProd ? "none" : "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       });
 
+      console.log("🍪 Cookies set, redirecting to dashboard");
       res.redirect(`${FRONTEND_URL}/dashboard`);
     } catch (error) {
-      console.error("Google callback error:", error);
-      res.redirect(`${FRONTEND_URL}/?error=oauth_failed`);
+      console.error("❌ Google callback error:", error);
+      res.redirect(`${FRONTEND_URL}/login?error=oauth_failed&message=${encodeURIComponent(error.message)}`);
     }
   }
 );
 
 /* =======================
-   🐙 GITHUB AUTH
+   🐙 GITHUB AUTH - FIXED Callback URLs
 ======================= */
 router.get(
   "/auth/github",
-  passport.authenticate("github", { scope: ["user:email"] })
+  (req, res, next) => {
+    console.log("🔐 GitHub OAuth initiated");
+    next();
+  },
+  passport.authenticate("github", { 
+    scope: ["user:email"] 
+  })
 );
 
 router.get(
   "/github/callback",
+  (req, res, next) => {
+    console.log("🔄 GitHub OAuth callback received");
+    next();
+  },
   passport.authenticate("github", {
-    failureRedirect: `${FRONTEND_URL}/`,
+    failureRedirect: `${FRONTEND_URL}/login?error=oauth_failed`,
     session: true,
   }),
   async (req, res) => {
     try {
+      console.log("✅ GitHub OAuth successful for user:", req.user?.email);
+      
       const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
         req.user._id
       );
@@ -96,17 +130,21 @@ router.get(
         httpOnly: true,
         secure: isProd,
         sameSite: isProd ? "none" : "lax",
+        maxAge: 15 * 60 * 1000 // 15 minutes
       });
+      
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: isProd,
         sameSite: isProd ? "none" : "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       });
 
+      console.log("🍪 Cookies set, redirecting to dashboard");
       res.redirect(`${FRONTEND_URL}/dashboard`);
     } catch (error) {
-      console.error("GitHub callback error:", error);
-      res.redirect(`${FRONTEND_URL}/?error=oauth_failed`);
+      console.error("❌ GitHub callback error:", error);
+      res.redirect(`${FRONTEND_URL}/login?error=oauth_failed&message=${encodeURIComponent(error.message)}`);
     }
   }
 );
