@@ -23,21 +23,39 @@ const app = express();
 const isProd = process.env.NODE_ENV === "production";
 
 // -------------------------
-// 🌐 CORS Configuration
+// 🌐 CORS Configuration - FIXED
 // -------------------------
-const allowedOrigins = [process.env.FRONTEND_URL || process.env.CORS_ORIGIN];
+const allowedOrigins = [
+  process.env.FRONTEND_URL, 
+  process.env.CORS_ORIGIN,
+  "https://habitmate-tws5.onrender.com",
+  "http://localhost:3000"
+].filter(Boolean);
+
+console.log("✅ Allowed CORS origins:", allowedOrigins);
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl)
+      // Allow requests with no origin (like mobile apps, curl, Postman)
       if (!origin) return callback(null, true);
-
-      if (allowedOrigins.indexOf(origin) === -1) {
-        const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
-        return callback(new Error(msg), false);
+      
+      // Check if origin is in allowed list
+      if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+        return callback(null, true);
       }
-      return callback(null, true);
+      
+      // Check for subdomains or variations
+      const normalizedOrigin = origin.replace(/\/$/, '');
+      const normalizedAllowed = allowedOrigins.map(o => o.replace(/\/$/, ''));
+      
+      if (normalizedAllowed.includes(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      console.log("❌ CORS blocked origin:", origin);
+      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}. Allowed: ${allowedOrigins.join(', ')}`;
+      return callback(new Error(msg), false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -46,11 +64,13 @@ app.use(
       "Authorization",
       "X-Requested-With",
       "Accept",
+      "Origin",
+      "X-Requested-With"
     ],
   })
 );
 
-// Handle preflight requests - FIXED: Use regex instead of string wildcard
+// Handle preflight requests - FIXED for Express v5
 app.options(/.*/, cors());
 
 // -------------------------
@@ -75,7 +95,9 @@ app.use(
       httpOnly: true,
       secure: isProd,          // true in production with HTTPS
       sameSite: isProd ? "none" : "lax",
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
     },
+    proxy: isProd, // Trust Render's proxy in production
   })
 );
 
@@ -98,16 +120,37 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Serve files via /public route
-app.use("/public", express.static(path.join(process.cwd(), "../public")));
+app.use("/public", express.static(path.join(process.cwd(), "public")));
 
 // -------------------------
 // ✅ Health Check Route
 // -------------------------
-app.get("/health", (req, res) => {
+app.get("/api/health", (req, res) => {
   res.status(200).json({
     success: true,
     message: "Server is running healthy",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// -------------------------
+// 🎯 SPA Fallback Route - FIXED for Refresh Issue
+// -------------------------
+// This serves your frontend for any route not handled by API
+app.get('*', (req, res, next) => {
+  // Skip API routes
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  
+  // For non-API routes, you might want to serve a basic response
+  // or redirect to your frontend if they're separate
+  res.status(200).json({
+    success: true,
+    message: "HabitMate API Server",
+    frontend: process.env.FRONTEND_URL,
+    documentation: "API endpoints are available under /api/v2/"
   });
 });
 
@@ -120,6 +163,14 @@ app.use((err, req, res, next) => {
     success: false,
     message: "Internal Server Error",
     error: isProd ? {} : err.message
+  });
+});
+
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `API route ${req.originalUrl} not found`
   });
 });
 
