@@ -93,7 +93,16 @@ router.get(
     }
   }
 );
-
+// Add this route to test Google OAuth configuration
+router.get("/auth/google/config", (req, res) => {
+  res.json({
+    success: true,
+    hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+    hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+    backendUrl: process.env.BACKEND_URL,
+    callbackUrl: `${process.env.BACKEND_URL}/api/v2/users/google/callback`
+  });
+});
 /* =======================
    🐙 GITHUB AUTH - FIXED Callback URLs
 ======================= */
