@@ -51,45 +51,38 @@ router.get(
   })
 );
 
+// In your user.route.js - Update the Google callback:
 router.get(
   "/google/callback",
-  (req, res, next) => {
-    console.log("🔄 Google OAuth callback received");
-    console.log("📋 Query params:", req.query);
-    next();
-  },
   passport.authenticate("google", {
     failureRedirect: `${FRONTEND_URL}/login?error=oauth_failed`,
     session: true,
   }),
   async (req, res) => {
     try {
-      console.log("✅ Google OAuth successful for user:", req.user?.email);
-      
       const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
         req.user._id
       );
 
-      // Set cookies
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
         secure: isProd,
         sameSite: isProd ? "none" : "lax",
-        maxAge: 15 * 60 * 1000 // 15 minutes
+        maxAge: 15 * 60 * 1000
       });
       
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: isProd,
         sameSite: isProd ? "none" : "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        maxAge: 7 * 24 * 60 * 60 * 1000
       });
 
-      console.log("🍪 Cookies set, redirecting to dashboard");
-      res.redirect(`${FRONTEND_URL}/`);
+      // ✅ Redirect with oauth_success parameter
+      res.redirect(`${FRONTEND_URL}/?oauth_success=true`);
     } catch (error) {
-      console.error("❌ Google callback error:", error);
-      res.redirect(`${FRONTEND_URL}/login?error=oauth_failed&message=${encodeURIComponent(error.message)}`);
+      console.error("Google callback error:", error);
+      res.redirect(`${FRONTEND_URL}/login?error=oauth_failed`);
     }
   }
 );
