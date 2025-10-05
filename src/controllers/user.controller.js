@@ -307,7 +307,7 @@ export const sendVerificationEmail = async (req, res) => {
     user.emailVerificationExpires = Date.now() + 1000 * 60 * 60 * 24; // 24 hours
     await user.save();
 
-    const verificationUrl = `http://localhost:8080/verify-email?token=${token}`;
+    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
     await sendEmail({
       to: user.email,
