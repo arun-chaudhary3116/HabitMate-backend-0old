@@ -233,6 +233,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
         bio: user.bio || "",
         authProvider: user.authProvider || "local",
         createdAt: user.createdAt,
+        isEmailVerified: user.isEmailVerified ?? false,
       },
       "Current user fetched successfully"
     )
